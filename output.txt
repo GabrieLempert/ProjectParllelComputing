@@ -1,0 +1,9 @@
+Points 3, 84, 85 satisfy Proximity Criteria at t = t2
+Points 86, 167, 167 satisfy Proximity Criteria at t = t3
+Points 169, 250, 251 satisfy Proximity Criteria at t = t4
+Points 252, 333, 334 satisfy Proximity Criteria at t = t5
+Points 335, 416, 417 satisfy Proximity Criteria at t = t6
+Points 418, 499, 500 satisfy Proximity Criteria at t = t7
+Points 501, 582, 583 satisfy Proximity Criteria at t = t8
+Points 584, 665, 666 satisfy Proximity Criteria at t = t9
+Points 667, 748, 749 satisfy Proximity Criteria at t = t10
