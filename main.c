@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <mpi.h>
 #define MAX_POINTS 100000
-
+#define FILE_NAME "input.txt"
+#define OUTPUT_NAME "output.txt"
+/*Data*/
 typedef struct
 {
     int id;
@@ -11,34 +14,33 @@ typedef struct
 
 typedef struct
 {
+    int N, K, TCount;
+    float D;
+    Point *points;
+} init_p;
+
+typedef struct
+{
     int id;
     double x, y;
-    int t;
 } Coordinate;
+/*Functions*/
+void freeLocalIdMatrix(int **matrix, int rows);
+void initData(init_p *data, const char *filename);
+int checkDistanceSmallerThanD(double x1, double y1, double x2, double y2, float D);
+void CalculateCoordinate(Point *p, int t, Coordinate *coord, int N, int index);
+int CheckCretirieaByT(init_p* data, Coordinate *coord, int index);
 
-void calculateCoordinates(int N, int TCount, Point points[], Coordinate coordinates[][N])
+void initData(init_p *data, const char *filename)
 {
-    double t;
-    int id = 1;
-    for (int i = 0; i < TCount; i++)
-    {
-        t = 2.0 * i / TCount - 1.0;
+    // Initialize the struct members
+    data->N = 0;
+    data->K = 0;
+    data->TCount = 0;
+    data->D = 0.0;
+    data->points = NULL;
 
-        for (int j = 0; j < N; j++)
-        {
-            double x = ((points[j].x2 - points[j].x1) / 2.0) * sin(t * M_PI / 2.0) + (points[j].x2 + points[j].x1) / 2.0;
-            double y = points[j].a * x + points[j].b;
-
-            coordinates[i][j].id = id;
-            coordinates[i][j].x = x;
-            coordinates[i][j].y = y;
-            id++;
-        }
-    }
-}
-
-void readInputFile(const char *filename, int *N, int *K, float *D, int *TCount, Point points[])
-{
+    // Read the data from the file and assign it to the struct members
     FILE *inputFile = fopen(filename, "r");
     if (inputFile == NULL)
     {
@@ -46,8 +48,7 @@ void readInputFile(const char *filename, int *N, int *K, float *D, int *TCount, 
         exit(1);
     }
 
-    // Read the input parameters
-    int result = fscanf(inputFile, "%d %d %f %d", N, K, D, TCount);
+    int result = fscanf(inputFile, "%d %d %f %d", &(data->N), &(data->K), &(data->D), &(data->TCount));
     if (result != 4)
     {
         printf("Error reading input parameters from the file.\n");
@@ -55,18 +56,25 @@ void readInputFile(const char *filename, int *N, int *K, float *D, int *TCount, 
         exit(1);
     }
 
-    int size = *N;
-    if (size <= 0 || size > MAX_POINTS)
+    if (data->N <= 0 || data->N > MAX_POINTS)
     {
         printf("Invalid value for N in the input file.\n");
         fclose(inputFile);
         exit(1);
     }
 
-    // Read the points data
-    for (int i = 0; i < size; i++)
+    // Allocate memory for the points array based on N
+    data->points = (Point *)malloc(data->N * sizeof(Point));
+    if (data->points == NULL)
     {
-        result = fscanf(inputFile, "%d %lf %lf %lf %lf", &points[i].id, &points[i].x1, &points[i].x2, &points[i].a, &points[i].b);
+        printf("Memory allocation error for points array.\n");
+        fclose(inputFile);
+        exit(1);
+    }
+
+    for (int i = 0; i < data->N; i++)
+    {
+        result = fscanf(inputFile, "%d %lf %lf %lf %lf", &(data->points[i].id), &(data->points[i].x1), &(data->points[i].x2), &(data->points[i].a), &(data->points[i].b));
         if (result != 5)
         {
             printf("Error reading data for Point %d from the file.\n", i + 1);
@@ -78,87 +86,100 @@ void readInputFile(const char *filename, int *N, int *K, float *D, int *TCount, 
     fclose(inputFile);
 }
 
-void printCoordinates(int N, int TCount, Coordinate coordinates[][N])
-{
-    for (int i = 0; i < TCount; i++)
-    {
-        for (int j = 0; j < N; j++)
-        {
-            printf("Coordinate ID: %d, x: %.2f, y: %.2f\n", coordinates[i][j].id, coordinates[i][j].x, coordinates[i][j].y);
-        }
-    }
-}
-
 int checkDistanceSmallerThanD(double x1, double y1, double x2, double y2, float D)
 {
     double distance = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
     return (distance < D) ? 1 : 0;
 }
-
-int **CheckRowsCoordinates(int N, float D, Coordinate coordinate[][N], int TCount, int K)
+void CalculateCoordinate(Point *p, int t, Coordinate *coord, int N, int index)
 {
-    int currentCol = 0;
-    int currentRow = 0;
-    int KCount = 0;
-    int pointCount = 0;                                    
-    int **idMatrix = (int **)malloc(TCount * sizeof(int *)); // Allocate memory for all rows at once
+    double x = ((p[index].x2 - p[index].x1) / 2.0) * sin(t * M_PI / 2.0) + (p[index].x2 + p[index].x1) / 2.0;
+    double y = p[index].a * x + p[index].b;
 
-    // Initialize idMatrix with all zeroes using calloc
-    for (int i = 0; i < TCount; i++)
-    {
-        idMatrix[i] = (int *)calloc(3, sizeof(int));
-    }
-
-    while (currentRow < TCount)
-    {
-        Coordinate temp = coordinate[currentRow][currentCol];
-
-        // Loops through the point and checks if it's valid
-        for (int i = 0; i < N; i++)
-        {
-            if (currentCol != i)
-            {
-                Coordinate currentCord = coordinate[currentRow][i];
-                KCount += checkDistanceSmallerThanD(temp.x, temp.y, currentCord.x, currentCord.y, D);
-            }
-            if (KCount == K)
-            {
-                pointCount++;
-                // Store the point ID in the array
-                idMatrix[currentRow][pointCount] = temp.id;
-                // Reset KCount for the next point
-                KCount = 0;
-            }
-        }
-
-        currentCol++;
-        if (currentCol == N)
-        {
-            // Move to the next row
-            currentRow++;
-            currentCol = 0;
-            pointCount = 0; // Reset pointCount for the new row
-        }
-    }
-
-    return idMatrix;
+    coord[index].id = p[index].id + N * index;
+    coord[index].x = x;
+    coord[index].y = y;
 }
-
-void printInputValues(int N, int K, float D, int TCount, Point points[])
+void printInputValues(init_p* data, int rank)
 {
-    printf("N: %d\n", N);
-    printf("K: %d\n", K);
-    printf("D: %.2f\n", D);
-    printf("TCount: %d\n", TCount);
+    printf("My rank is,%d\n", rank);
+    printf("N: %d\n", data->N);
+    printf("K: %d\n", data->K);
+    printf("D: %.2f\n", data->D);
+    printf("TCount: %d\n", data->TCount);
 
     printf("Points:\n");
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < data->N; i++)
     {
         printf("ID: %d, x1: %.2f, x2: %.2f, a: %.2f, b: %.2f\n",
-               points[i].id, points[i].x1, points[i].x2, points[i].a, points[i].b);
+               data->points[i].id, data->points[i].x1, data->points[i].x2, data->points[i].a, data->points[i].b);
     }
 }
 
+int CheckCretirieaByT(init_p* data, Coordinate *coord, int index)
+
+{
+    Coordinate temp = coord[index];
+    int K_approximates = data->K;
+    float D_maximum = data->D;
+    int count = 0;
+
+    for (int i = 0; i < data->N; i++)
+    {
+        if (index != i)
+        {
+            count += checkDistanceSmallerThanD(temp.x, temp.y, coord[i].x, coord[i].y, D_maximum);
+        }
+
+        if (count >= K_approximates)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+void validate(init_p* data, int **idMatrix, int startTCount, int endTcount,int size,int rank)
+{
+    printf("My rank is %d",rank);
+    Coordinate *coord = (Coordinate *)malloc(sizeof(Coordinate) * data->N);
+    int validationCount = 0;
+    printf("Checking,%d",rank);
+    for (int i = 0; i <size; i++)
+    {   
+        int calculateFrom = startTCount+i;
+        int t = 2.0 * calculateFrom/ data->TCount - 1;
+        // calculate coordinate for specif t each time
+        CalculateCoordinate(data->points, t, coord, data->N, calculateFrom);
+        for (int j = 0; j < data->N; j++)
+        {
+            if (validationCount == 3)
+            {
+                break;
+            }
+
+            if (CheckCretirieaByT(data, coord, j))
+            {
+                idMatrix[i][validationCount] = coord[j].id;
+                validationCount++;
+            }
+        }
+
+        validationCount = 0;
+    }
+}
+void initializeIdMatrix(int** localMatrix)
+{
+     for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            localMatrix[i][j]=-1;
+            
+        }
+        
+    }
+}
 void WriteToOutputFile(const char *filename, int **idMatrix, int TCount)
 {
     FILE *outputFile = fopen(filename, "w");
@@ -175,7 +196,7 @@ void WriteToOutputFile(const char *filename, int **idMatrix, int TCount)
         int id2 = idMatrix[i][1];
         int id3 = idMatrix[i][2];
 
-        if (id1 > 0 && id2 > 0 && id3 > 0)
+        if (id3 > 0)
         {
             count++;
             fprintf(outputFile, "Points %d, %d, %d satisfy Proximity Criteria at t = t%d\n", id1, id2, id3, i + 1);
@@ -188,43 +209,181 @@ void WriteToOutputFile(const char *filename, int **idMatrix, int TCount)
 
     fclose(outputFile);
 }
-void PrintMatrix(int **matrix, int rows, int cols)
+void freeLocalIdMatrix(int **matrix, int rows)
 {
     for (int i = 0; i < rows; i++)
     {
-        for (int j = 0; j < cols; j++)
-        {
+        free(matrix[i]);
+    }
+    free(matrix);
+}
+MPI_Datatype createPointType()
+{
+    MPI_Datatype pointType;
+    MPI_Datatype types[5] = {MPI_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE};
+    int blockLengths[5] = {1, 1, 1, 1, 1};
+    MPI_Aint displacements[5];
+
+    Point samplePoint;
+    MPI_Get_address(&samplePoint.id, &displacements[0]);
+    MPI_Get_address(&samplePoint.x1, &displacements[1]);
+    MPI_Get_address(&samplePoint.x2, &displacements[2]);
+    MPI_Get_address(&samplePoint.a, &displacements[3]);
+    MPI_Get_address(&samplePoint.b, &displacements[4]);
+
+    for (int i = 1; i < 5; i++)
+    {
+        displacements[i] -= displacements[0];
+    }
+    displacements[0] = 0;
+
+    MPI_Type_create_struct(5, blockLengths, displacements, types, &pointType);
+    MPI_Type_commit(&pointType);
+
+    return pointType;
+}
+
+MPI_Datatype createInitPType()
+{
+    MPI_Datatype initPType;
+    MPI_Datatype types[4] = {MPI_INT, MPI_INT, MPI_INT, MPI_FLOAT};
+    int blockLengths[4] = {1, 1, 1, 1};
+    MPI_Aint displacements[4];
+    init_p sampleInitP; // Create a sample instance of init_p struct
+    MPI_Get_address(&sampleInitP.N, &displacements[0]);
+    MPI_Get_address(&sampleInitP.K, &displacements[1]);
+    MPI_Get_address(&sampleInitP.TCount, &displacements[2]);
+    MPI_Get_address(&sampleInitP.D, &displacements[3]);
+
+    for (int i = 1; i < 4; i++)
+    {
+        displacements[i] -= displacements[0];
+    }
+    displacements[0] = 0;
+
+    MPI_Type_create_struct(4, blockLengths, displacements, types, &initPType);
+    MPI_Type_commit(&initPType);
+
+    return initPType;
+}
+void printPoints(Point *points, int N, int rank)
+{
+    printf("Rank %d Points:\n", rank);
+    for (int i = 0; i < N; i++)
+    {
+        printf("Point %d: ID: %d, x1: %.2f, x2: %.2f, a: %.2f, b: %.2f\n",
+               i + 1, points[i].id, points[i].x1, points[i].x2, points[i].a, points[i].b);
+    }
+    printf("\n");
+}
+void printIntMatrix(int **matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
             printf("%d ", matrix[i][j]);
         }
         printf("\n");
     }
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+    init_p *data; // Change data to a pointer
+    int rank, size;
+    int **idMatrix;
 
-    int N, K, TCount;
-    float D;
-    Point points[MAX_POINTS];
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    readInputFile("input.txt", &N, &K, &D, &TCount, points);
-    Coordinate coordinates[TCount][N];
-    // Print the read values
+    MPI_Datatype MPIData = createInitPType();
 
-    calculateCoordinates(N, TCount, points, coordinates);
-
-    printCoordinates(N, TCount, coordinates);
-
-    int **idMatrix = CheckRowsCoordinates(N, D, coordinates, TCount, K);
-    PrintMatrix(idMatrix, TCount, 3);
-    WriteToOutputFile("output.txt", idMatrix, TCount);
-
-    // Don't forget to free the memory allocated for idMatrix
-    for (int i = 0; i < TCount; i++)
+    if (rank == 0)
     {
-        free(idMatrix[i]);
+        // Allocate memory for the data struct
+        data = (init_p *)malloc(sizeof(init_p));
+        if (data == NULL)
+        {
+            printf("Memory allocation error for data struct.\n");
+            exit(1);
+        }
+
+        initData(data, FILE_NAME);
+        //initializeIdMatrix(data->TCount);
+        for (int i = 1; i < size; i++)
+        {
+            MPI_Send(&(data->N), 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
     }
-    free(idMatrix);
+    else
+    {
+        int N;
+        MPI_Recv(&N, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        data = (init_p *)malloc(sizeof(init_p));
+        if (data == NULL)
+        {
+            printf("Memory allocation error for data struct.\n");
+            exit(1);
+        }
+        data->N = N;
+        data->points = (Point *)malloc(N * sizeof(Point));
+        if (data->points == NULL)
+        {
+            printf("Memory allocation error for points array.\n");
+            exit(1);
+        }
+    }
+    
+    //initializeIdMatrix(rank);
+    
+   
+    
+    // Broadcast the data structure to all processes
+    MPI_Bcast(data, 1, MPIData, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+    // Broadcast the points array from rank 0 to all other processes
+    MPI_Bcast(data->points, data->N * sizeof(Point), MPI_BYTE, 0, MPI_COMM_WORLD);
+        // Calculate the range of T values for each process
+    int localTCount, startTCount, endTcount;
+    int rangePerProcess = data->TCount / size;
+    int remainder = data->TCount % size;
+    if (rank < remainder)
+    {
+        startTCount = rank * (rangePerProcess + 1);
+        endTcount = startTCount + rangePerProcess + 1;
+    }
+    else
+    {
+        startTCount = remainder * (rangePerProcess + 1) + (rank - remainder) * rangePerProcess;
+        endTcount = startTCount + rangePerProcess;
+    }
+    localTCount = endTcount - startTCount;
+    // Calculate the coordinates and validate for the local range
+    printf("Test");
+    int localMatrix [localTCount][3];
+    printf("Test2");
+    
+    initializeIdMatrix(&localMatrix);
+    printIntMatrix(&localMatrix,localTCount,3);
+    
+    //validate(data,localMatrix, startTCount, endTcount,localTCount,rank);
+    // Gather idMatrix data from all processes to rank 0
+    //MPI_Gather(localIdMatrix[0], 3 * localTCount, MPI_INT, idMatrix[0], 3 * localTCount, MPI_INT, 0, MPI_COMM_WORLD);
+
+
+
+    // Free memory and finalize MPI
+    if (rank == 0)
+    {
+        free(data->points);
+        free(data);
+    }
+    else
+    {
+        free(data->points);
+        free(data);
+    }
+
+    MPI_Finalize();
 
     return 0;
 }

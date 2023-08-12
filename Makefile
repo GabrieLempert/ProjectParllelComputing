@@ -1,6 +1,6 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -std=c11
-LDFLAGS =
+CC = mpicc
+CFLAGS = -Wall -Wextra -g -std=c11
+LDFLAGS = -lm
 
 SRCS = main.c
 OBJS = $(SRCS:.c=.o)
