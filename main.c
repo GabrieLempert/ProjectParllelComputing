@@ -29,7 +29,7 @@ void freeLocalIdMatrix(int **matrix, int rows);
 void initData(init_p *data, const char *filename);
 int checkDistanceSmallerThanD(double x1, double y1, double x2, double y2, float D);
 void CalculateCoordinate(Point *p, int t, Coordinate *coord, int N, int index);
-int CheckCretirieaByT(init_p* data, Coordinate *coord, int index);
+int CheckCretirieaByT(init_p *data, Coordinate *coord, int index);
 
 void initData(init_p *data, const char *filename)
 {
@@ -100,7 +100,7 @@ void CalculateCoordinate(Point *p, int t, Coordinate *coord, int N, int index)
     coord[index].x = x;
     coord[index].y = y;
 }
-void printInputValues(init_p* data, int rank)
+void printInputValues(init_p *data, int rank)
 {
     printf("My rank is,%d\n", rank);
     printf("N: %d\n", data->N);
@@ -116,7 +116,7 @@ void printInputValues(init_p* data, int rank)
     }
 }
 
-int CheckCretirieaByT(init_p* data, Coordinate *coord, int index)
+int CheckCretirieaByT(init_p *data, Coordinate *coord, int index)
 
 {
     Coordinate temp = coord[index];
@@ -139,16 +139,16 @@ int CheckCretirieaByT(init_p* data, Coordinate *coord, int index)
 
     return 0;
 }
-void validate(init_p* data, int **idMatrix, int startTCount, int endTcount,int size,int rank)
+void validate(init_p *data, int **idMatrix, int startTCount, int endTcount, int size, int rank)
 {
-    printf("My rank is %d",rank);
+    printf("My rank is %d", rank);
     Coordinate *coord = (Coordinate *)malloc(sizeof(Coordinate) * data->N);
     int validationCount = 0;
-    printf("Checking,%d",rank);
-    for (int i = 0; i <size; i++)
-    {   
-        int calculateFrom = startTCount+i;
-        int t = 2.0 * calculateFrom/ data->TCount - 1;
+    printf("Checking,%d", rank);
+    for (int i = 0; i < size; i++)
+    {
+        int calculateFrom = startTCount + i;
+        int t = 2.0 * calculateFrom / data->TCount - 1;
         // calculate coordinate for specif t each time
         CalculateCoordinate(data->points, t, coord, data->N, calculateFrom);
         for (int j = 0; j < data->N; j++)
@@ -168,16 +168,14 @@ void validate(init_p* data, int **idMatrix, int startTCount, int endTcount,int s
         validationCount = 0;
     }
 }
-void initializeIdMatrix(int** localMatrix)
+void initializeIdMatrix(int **localMatrix)
 {
-     for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 4; j++)
         {
-            localMatrix[i][j]=-1;
-            
+            localMatrix[i][j] = -1;
         }
-        
     }
 }
 void WriteToOutputFile(const char *filename, int **idMatrix, int TCount)
@@ -276,9 +274,12 @@ void printPoints(Point *points, int N, int rank)
     }
     printf("\n");
 }
-void printIntMatrix(int **matrix, int rows, int cols) {
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+void printIntMatrix(int **matrix, int rows, int cols)
+{
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
             printf("%d ", matrix[i][j]);
         }
         printf("\n");
@@ -287,7 +288,6 @@ void printIntMatrix(int **matrix, int rows, int cols) {
 
 int main(int argc, char *argv[])
 {
-    init_p *data; // Change data to a pointer
     int rank, size;
     int **idMatrix;
 
@@ -295,54 +295,46 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    MPI_Datatype MPIData = createInitPType();
-
     if (rank == 0)
     {
+        init_p data;
         // Allocate memory for the data struct
-        data = (init_p *)malloc(sizeof(init_p));
-        if (data == NULL)
-        {
-            printf("Memory allocation error for data struct.\n");
-            exit(1);
-        }
 
-        initData(data, FILE_NAME);
-        //initializeIdMatrix(data->TCount);
+        initData(&data, FILE_NAME);
+        // initializeIdMatrix(data->TCount);
         for (int i = 1; i < size; i++)
         {
-            MPI_Send(&(data->N), 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send((&data.N), 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send((&data.K), 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send((&data.D), 1, MPI_FLOAT, i, 0, MPI_COMM_WORLD);
+            MPI_Send((data.TCount), 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send((data.points), sizeof(Point) * data.N, MPI_BYTE, i, 0, MPI_COMM_WORLD);
         }
     }
     else
     {
-        int N;
-        MPI_Recv(&N, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        data = (init_p *)malloc(sizeof(init_p));
-        if (data == NULL)
-        {
-            printf("Memory allocation error for data struct.\n");
-            exit(1);
-        }
-        data->N = N;
-        data->points = (Point *)malloc(N * sizeof(Point));
-        if (data->points == NULL)
-        {
-            printf("Memory allocation error for points array.\n");
-            exit(1);
-        }
+        init_p data;
+        MPI_Recv(&data.N, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&data.K, 1, MPI_INT,0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&data.D, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&data.TCount, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        // Allocate memory for points array
+        data.points = (Point *)malloc(sizeof(Point) * data.N);
+
+        MPI_Recv(data.points, sizeof(Point) * data.N, MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+       
     }
-    
-    //initializeIdMatrix(rank);
-    
-   
-    
+
+    // initializeIdMatrix(rank);
+
     // Broadcast the data structure to all processes
     MPI_Bcast(data, 1, MPIData, 0, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
     // Broadcast the points array from rank 0 to all other processes
     MPI_Bcast(data->points, data->N * sizeof(Point), MPI_BYTE, 0, MPI_COMM_WORLD);
-        // Calculate the range of T values for each process
+    // Calculate the range of T values for each process
     int localTCount, startTCount, endTcount;
     int rangePerProcess = data->TCount / size;
     int remainder = data->TCount % size;
@@ -359,17 +351,15 @@ int main(int argc, char *argv[])
     localTCount = endTcount - startTCount;
     // Calculate the coordinates and validate for the local range
     printf("Test");
-    int localMatrix [localTCount][3];
+    int localMatrix[localTCount][3];
     printf("Test2");
-    
+
     initializeIdMatrix(&localMatrix);
-    printIntMatrix(&localMatrix,localTCount,3);
-    
-    //validate(data,localMatrix, startTCount, endTcount,localTCount,rank);
-    // Gather idMatrix data from all processes to rank 0
-    //MPI_Gather(localIdMatrix[0], 3 * localTCount, MPI_INT, idMatrix[0], 3 * localTCount, MPI_INT, 0, MPI_COMM_WORLD);
+    printIntMatrix(&localMatrix, localTCount, 3);
 
-
+    // validate(data,localMatrix, startTCount, endTcount,localTCount,rank);
+    //  Gather idMatrix data from all processes to rank 0
+    // MPI_Gather(localIdMatrix[0], 3 * localTCount, MPI_INT, idMatrix[0], 3 * localTCount, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Free memory and finalize MPI
     if (rank == 0)
