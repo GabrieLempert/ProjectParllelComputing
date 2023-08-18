@@ -70,5 +70,10 @@
   "C_Cpp_Runner.useUndefinedSanitizer": false,
   "C_Cpp_Runner.useLeakSanitizer": false,
   "C_Cpp_Runner.showCompilationTime": false,
-  "C_Cpp_Runner.useLinkTimeOptimization": false
+  "C_Cpp_Runner.useLinkTimeOptimization": false,
+  "files.associations": {
+    "*.js": "javascript",
+    "mpi.h": "c"
+  },
+  "C_Cpp.default.compilerPath": "/opt/homebrew/Cellar/open-mpi/4.1.5/bin/mpicc"
 }

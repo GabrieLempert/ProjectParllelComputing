@@ -6,15 +6,9 @@
                 "${workspaceFolder}/**",
                 "/opt/homebrew/Cellar/open-mpi/4.1.5/include"
             ],
-            "compilerPath": ""/opt/homebrew/Cellar/open-mpi/4.1.5/mpi",
             "cStandard": "gnu99",
-            "cppStandard": "c++98",
-            "intelliSenseMode": "macos-clang-arm64",
-            "compilerArgs": [
-                ""
-            ],
-            "browse": {
-            
+            "cppStandard": "gnu++98",
+            "intelliSenseMode": "macos-gcc-arm64"
         }
     ],
     "version": 4

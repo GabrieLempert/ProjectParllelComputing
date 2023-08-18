@@ -1,20 +1,27 @@
+# Directories
+SRCDIR = src
+BUILDDIR = build
+
+# Compiler and Linker flags
 CC = mpicc
-CFLAGS = -Wall -Wextra -g -std=c11
+CFLAGS = -Wall -Werror -fopenmp 
 LDFLAGS = -lm
 
-SRCS = main.c
-OBJS = $(SRCS:.c=.o)
-EXECUTABLE = program
+# Target executable
+TARGET = $(BUILDDIR)/program
 
-.PHONY: all clean
+# Source and Object files
+SRC = $(SRCDIR)/main.c
+OBJ = $(BUILDDIR)/main.o
 
-all: $(EXECUTABLE)
+all: $(TARGET)
 
-$(EXECUTABLE): $(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) -o $@
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) $(LDFLAGS)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ): $(SRC)
+	mkdir -p $(BUILDDIR)
+	$(CC) $(CFLAGS) -c $(SRC) -o $(OBJ)
 
 clean:
-	rm -f $(EXECUTABLE) $(OBJS)
+	rm -rf $(BUILDDIR)

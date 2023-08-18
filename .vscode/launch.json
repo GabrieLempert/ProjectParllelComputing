@@ -2,25 +2,34 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "mpicc - Build and debug active file",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${fileDirname}/${fileBasenameNoExtension}",
+      "args": [
+        "-np",
+        "2",
+        "${fileDirname}/${fileBasenameNoExtension}"
+      ],
+      "stopAtEntry": true,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        {
+          "name": "TMPDIR",
+          "value": "/tmp"
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "mpicc build active file"
+    },
+    {
       "name": "C/C++ Runner: Debug Session",
       "type": "lldb",
       "request": "launch",
       "args": [],
       "cwd": "/Users/gabilempert/Documents/GabiVS/PrallelComputing/ProjectParllelComputing",
       "program": "/Users/gabilempert/Documents/GabiVS/PrallelComputing/ProjectParllelComputing/build/Debug/outDebug"
-    },
-    {
-      "name": "C/C++: clang build and debug active file",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${fileDirname}/${fileBasenameNoExtension}",
-      "args": [],
-      "stopAtEntry": false,
-      "cwd": "${fileDirname}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "lldb",
-      "preLaunchTask": "C/C++: clang build active file"
     }
   ]
 }
