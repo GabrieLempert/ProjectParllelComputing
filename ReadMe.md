@@ -111,8 +111,8 @@ The validation results are written to the `output.txt` file. The output includes
 
   ```
   Points 1, 2, 3 satisfy Proximity Criteria at t = t1
-  Points 1, 3, 2 satisfy Proximity Criteria at t = t2
-  Points 1, 3, 2 satisfy Proximity Criteria at t = t3
+  Points 4, 5, 6 satisfy Proximity Criteria at t = t2
+  Points 7, 8, 9 satisfy Proximity Criteria at t = t3
   No points satisfy the proximity criteria.
   ```
 
@@ -122,4 +122,4 @@ The validation results are written to the `output.txt` file. The output includes
 
 ### License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Afeka College License. See the [LICENSE](LICENSE) file for details.
